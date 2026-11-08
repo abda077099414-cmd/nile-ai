@@ -1,0 +1,36 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>النيلي AI</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#edf2ff;font-family:Tahoma,Arial}header{padding:22px 6%;border-bottom:1px solid #263451;display:flex;justify-content:space-between;align-items:center}.brand{font-size:25px;font-weight:bold;color:#55d8ca}.tag{font-size:12px;color:#b5c4e4;border:1px solid #2a3a5a;padding:8px 12px;border-radius:20px}main{max-width:1050px;margin:32px auto;padding:0 16px}.hero{text-align:center;margin-bottom:26px}.hero h1{font-size:clamp(28px,5vw,44px);margin:0 0 10px}.hero p{color:#aab8d5;line-height:1.8}.layout{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.box{background:#151e33;border:1px solid #2a3957;border-radius:18px;padding:22px}h2{font-size:18px;margin:0 0 16px}label{display:block;margin:13px 0 7px;color:#c5d2ee;font-size:13px}textarea,select{width:100%;background:#0b1427;color:#fff;border:1px solid #30415f;border-radius:10px;padding:12px;font:inherit}textarea{height:145px;resize:vertical;line-height:1.7}.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}button{cursor:pointer;border:0;border-radius:11px;padding:13px 16px;font:inherit;font-weight:bold}.mainbtn{width:100%;margin-top:16px;color:white;background:linear-gradient(90deg,#6378ff,#8b61f7)}.alt{background:#263553;color:#e7efff;border:1px solid #354969}.out{min-height:250px;background:#0b1427;border:1px dashed #344663;border-radius:13px;padding:15px;display:flex;align-items:center;justify-content:center;text-align:center;color:#9eafcf;overflow-wrap:anywhere}.out video{width:100%;border-radius:10px}.out audio{width:100%}.status{font-size:13px;color:#55d8ca;line-height:1.8;margin-top:12px;white-space:pre-wrap}.small{font-size:12px;color:#92a2c5;line-height:1.8;margin-top:12px}.divider{height:1px;background:#293754;margin:22px 0}.ready{font-size:12px;color:#8fa4c8;margin-top:12px}@media(max-width:760px){.layout{grid-template-columns:1fr}.box{padding:17px}}
+</style></head><body>
+<header><div class="brand">🌊 النيلي AI</div><div class="tag">استوديو الفيديو والصوت</div></header>
+<main><div class="hero"><h1>حوّل كلامك إلى <span style="color:#55d8ca">فيديو وصوت</span></h1><p>اكتب مشهدك، أنشئ فيديو بالذكاء الاصطناعي، أو حوّل الحوار إلى صوت عربي.</p></div>
+<div class="layout">
+<section class="box"><h2>🎬 إنشاء فيديو</h2><label>وصف المشهد</label><textarea id="prompt" placeholder="مثال: أبو صابر الحمار في كهوة عراقية يتحدث مع أبو صوف وسط أجواء مضحكة..."></textarea>
+<div class="cols"><div><label>المدة</label><select id="duration"><option value="5">5 ثوانٍ</option><option value="10">10 ثوانٍ</option></select></div><div><label>المقاس</label><select id="ratio"><option value="720:1280">عمودي 9:16</option><option value="1280:720">أفقي 16:9</option><option value="720:720">مربع 1:1</option></select></div></div>
+<button class="mainbtn" id="makeVideo">🚀 إنشاء الفيديو</button><div class="status" id="vstatus"></div><div class="small">توليد الفيديو يستهلك رصيداً من مزوّد الخدمة، وقد يستغرق عدة دقائق.</div>
+<div class="divider"></div><h2>🎙️ تحويل النص إلى صوت</h2><label>الحوار أو النص</label><textarea id="speech" style="height:95px" placeholder="اكتب الحوار باللهجة العراقية..."></textarea><label>نوع الصوت</label><select id="voice"><option value="onyx">رجالي عميق</option><option value="echo">رجالي</option><option value="nova">نسائي</option><option value="shimmer">نسائي ناعم</option><option value="alloy">محايد</option></select><button class="alt" id="makeVoice" style="width:100%;margin-top:12px">🔊 إنشاء الصوت</button><div class="status" id="astatus"></div>
+</section>
+<section class="box"><h2>📽️ النتيجة</h2><div class="out" id="result">ستظهر معاينة الفيديو أو الصوت هنا.</div><div id="download"></div><div class="ready" id="config"></div><p class="small">الصوت الناتج ملف MP3. الفيديو الناتج ملف MP4 عند اكتمال التوليد.</p></section>
+</div></main>
+<script>
+const $=id=>document.getElementById(id);let pollTimer;
+fetch('/api/config').then(r=>r.json()).then(c=>$('config').textContent=`حالة الربط — الفيديو: ${c.videoReady?'جاهز':'يحتاج مفتاح Runway'} | الصوت: ${c.voiceReady?'جاهز':'يحتاج مفتاح OpenAI'}`).catch(()=>{});
+function errText(x){return x?.error||'حدث خطأ غير معروف'}
+$('makeVideo').onclick=async()=>{
+ clearInterval(pollTimer);const prompt=$('prompt').value.trim();if(!prompt){$('vstatus').textContent='اكتب وصف الفيديو أولاً.';return}
+ $('makeVideo').disabled=true;$('vstatus').textContent='جارٍ إرسال الطلب...';$('result').textContent='⏳ يجري إنشاء الفيديو...';$('download').innerHTML='';
+ try{const r=await fetch('/api/video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,duration:+$('duration').value,ratio:$('ratio').value})});const d=await r.json();if(!r.ok)throw Error(errText(d));$('vstatus').textContent='تم إرسال الطلب. رقم المهمة: '+d.taskId+'\\nسأتابع حالة التوليد تلقائياً.';
+ let count=0;pollTimer=setInterval(async()=>{try{count++;const q=await fetch('/api/video/'+encodeURIComponent(d.taskId));const s=await q.json();if(!q.ok)throw Error(errText(s));$('vstatus').textContent='حالة الفيديو: '+s.status+' — متابعة '+count;
+ if(['SUCCEEDED','COMPLETED','completed'].includes(String(s.status).toUpperCase())){clearInterval(pollTimer);$('makeVideo').disabled=false;if(s.videoUrl){$('result').innerHTML='<video controls playsinline src="'+s.videoUrl+'"></video>';$('download').innerHTML='<a class="alt" style="display:block;text-align:center;padding:12px;margin-top:12px;color:#fff;text-decoration:none" href="'+s.videoUrl+'" target="_blank" download>⬇️ فتح / تنزيل الفيديو</a>';}else $('result').textContent='اكتمل التوليد لكن لم يصل رابط الفيديو.';}
+ if(['FAILED','CANCELLED'].includes(String(s.status).toUpperCase())){clearInterval(pollTimer);$('makeVideo').disabled=false;$('result').textContent='فشل التوليد: '+(s.error||'');}
+ if(count>90){clearInterval(pollTimer);$('makeVideo').disabled=false;$('vstatus').textContent+='\\nانتهت مدة المتابعة. يمكنك إعادة فتح الصفحة والتحقق من المهمة.'}
+ }catch(e){clearInterval(pollTimer);$('makeVideo').disabled=false;$('vstatus').textContent=e.message}},7000);
+ }catch(e){$('vstatus').textContent=e.message;$('result').textContent='';$('makeVideo').disabled=false}
+};
+$('makeVoice').onclick=async()=>{const text=$('speech').value.trim();if(!text){$('astatus').textContent='اكتب النص أولاً.';return}
+ $('makeVoice').disabled=true;$('astatus').textContent='جارٍ إنشاء الصوت...';
+ try{const r=await fetch('/api/voice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,voice:$('voice').value,instructions:'Speak Arabic in an Iraqi conversational style, with natural expressive delivery.'})});if(!r.ok){const e=await r.json();throw Error(errText(e))}
+ const blob=await r.blob(),url=URL.createObjectURL(blob);$('result').innerHTML='<audio controls src="'+url+'"></audio>';$('download').innerHTML='<a class="alt" style="display:block;text-align:center;padding:12px;margin-top:12px;color:#fff;text-decoration:none" download="nile-voice.mp3" href="'+url+'">⬇️ تنزيل MP3</a>';$('astatus').textContent='تم إنشاء الصوت بنجاح.'}
+ catch(e){$('astatus').textContent=e.message}finally{$('makeVoice').disabled=false}
+};
+</script></body></html>
